@@ -1,6 +1,7 @@
 from flask import Flask, redirect, request, session, jsonify
 import os
 import requests
+import xmltodict
 from dotenv import load_dotenv
 
 load_dotenv() #loads the .env
@@ -8,7 +9,7 @@ load_dotenv() #loads the .env
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
 
-
+# Yahoo OAuth credentials
 YAHOO_CLIENT_ID = os.getenv("YAHOO_CLIENT_ID")
 YAHOO_CLIENT_SECRET = os.getenv("YAHOO_CLIENT_SECRET")
 REDIRECT_URI = "https://fantasy-waiver-monitor-0c72c9149be3.herokuapp.com/callback"
@@ -65,17 +66,24 @@ def test_api():
 
     headers = {
         "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json",
+        "Content-Type": "application/xml",
+        "Accept": "application/xml",
     }
-    # Example API call: Get user's fantasy NFL teams
     url = "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1/games;game_keys=nfl/teams"
 
     response = requests.get(url, headers=headers)
 
+    print("Status Code:", response.status_code)
+    print("Response Text:", response.text)
+
     if response.status_code != 200:
         return f"API call failed: {response.status_code} {response.text}", 400
 
-    return jsonify(response.json())
+    try:
+        data_dict = xmltodict.parse(response.text)
+        return jsonify(data_dict)
+    except Exception as e:
+        return f"Failed to parse XML response: {e}", 500
 
 if __name__ == "__main__":
     app.run()
